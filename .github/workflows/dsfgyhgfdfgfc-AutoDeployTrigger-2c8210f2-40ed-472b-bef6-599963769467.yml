@@ -1,0 +1,60 @@
+name: Trigger auto deployment for dsfgyhgfdfgfc
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ master ]
+    paths:
+    - 'Dockerfile /**'
+    - '.github/workflows/dsfgyhgfdfgfc-AutoDeployTrigger-2c8210f2-40ed-472b-bef6-599963769467.yml'
+
+  # Allow mannually trigger 
+  workflow_dispatch:      
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to container registry
+        uses: docker/login-action@v1
+        with:
+          registry: chetanacrregistry.azurecr.io
+          username: ${{ secrets.DSFGYHGFDFGFC_REGISTRY_USERNAME }}
+          password: ${{ secrets.DSFGYHGFDFGFC_REGISTRY_PASSWORD }}
+
+      - name: Build and push container image to registry
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: chetanacrregistry.azurecr.io/mypythonapp:${{ github.sha }}
+          file: ./Dockerfile /Dockerfile
+          context: ./Dockerfile /
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.DSFGYHGFDFGFC_AZURE_CREDENTIALS }}
+
+
+      - name: Deploy to containerapp
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az config set extension.use_dynamic_install=yes_without_prompt
+            az containerapp registry set -n dsfgyhgfdfgfc -g ContainerAppDemo --server chetanacrregistry.azurecr.io --username  ${{ secrets.DSFGYHGFDFGFC_REGISTRY_USERNAME }} --password ${{ secrets.DSFGYHGFDFGFC_REGISTRY_PASSWORD }}
+            az containerapp update -n dsfgyhgfdfgfc -g ContainerAppDemo --image chetanacrregistry.azurecr.io/mypythonapp:${{ github.sha }}
